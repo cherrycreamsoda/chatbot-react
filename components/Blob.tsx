@@ -33,7 +33,9 @@ const Blob = ({ testMode = false, audioIntensity = 0 }: BlobProps) => {
 
       let targetIntensity: number
       if (testMode) {
-        targetIntensity = 0.15 + audioIntensity * 0.85
+        let parabola = audioIntensity * audioIntensity // x^2 curve
+        targetIntensity = 0.15 + parabola * 0.85
+
       } else {
         // Normal mode: high intensity (1) or calm on hover (0.15)
         targetIntensity = hover.current ? 0.15 : 1
