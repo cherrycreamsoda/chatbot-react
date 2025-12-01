@@ -10,6 +10,8 @@ export default function Home() {
   const [isRequesting, setIsRequesting] = useState(false)
   const [agentResponse, setAgentResponse] = useState<string>("")
   const [displayedText, setDisplayedText] = useState<string>("")
+  const prevIsSpeakingRef = useRef<boolean>(false)
+  const isNewResponseRef = useRef<boolean>(false)
 
   const [testMode, setTestMode] = useState(false)
   const [audioIntensity, setAudioIntensity] = useState(0)
@@ -53,13 +55,22 @@ export default function Home() {
     },
     onMessage: (message) => {
       if (message.source === "ai" && message.message) {
-        setAgentResponse((prev) => {
-          const newResponse = prev ? prev + message.message : message.message
-          return newResponse
-        })
+        if (isNewResponseRef.current) {
+          setAgentResponse(message.message)
+          isNewResponseRef.current = false
+        } else {
+          setAgentResponse((prev) => prev + message.message)
+        }
       }
     },
   })
+  useEffect(() => {
+    if (prevIsSpeakingRef.current === false && conversation.isSpeaking === true) {
+      console.log("[v0] Agent started speaking, ready for new response")
+      isNewResponseRef.current = true
+    }
+    prevIsSpeakingRef.current = conversation.isSpeaking
+  }, [conversation.isSpeaking])
 
   const analyzeAudio = () => {
     if (!analyserRef.current) return
@@ -172,6 +183,7 @@ export default function Home() {
       }
       setAgentResponse("")
       setDisplayedText("")
+      isNewResponseRef.current = false
       setTimeout(() => {
         handleStartConversation()
       }, 500)
@@ -187,6 +199,7 @@ export default function Home() {
       }
       setAgentResponse("")
       setDisplayedText("")
+      isNewResponseRef.current = false
       setIsRequesting(false)
     } catch (error) {
       console.error("Failed to close:", error)
@@ -219,10 +232,8 @@ export default function Home() {
 
       <div className="flex-1 flex items-start justify-center px-4 sm:px-6 pt-6">
         {displayedText && (
-          <div className="w-full max-w-2xl max-h-[6rem] overflow-y-auto scrollbar-transparent">
-            <p className="text-xl sm:text-2xl md:text-3xl text-white/90 leading-relaxed text-center line-clamp-2">
-              {displayedText}
-            </p>
+          <div className="w-full max-w-2xl h-[6rem] overflow-y-auto scrollbar-transparent">
+            <p className="text-xl sm:text-2xl md:text-3xl text-white/90 leading-relaxed text-center">{displayedText}</p>
           </div>
         )}
       </div>
@@ -235,21 +246,28 @@ export default function Home() {
         >
           <RotateCcw className="h-6 w-6" />
         </button>
-
         <button
           onClick={handleMicClick}
           disabled={isRequesting || conversation.isSpeaking}
-          className={`h-20 w-20 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transition-all flex items-center justify-center disabled:opacity-50 ${
-            isActive && conversation.isSpeaking
-              ? "animate-pulse shadow-2xl shadow-pink-500/70 scale-110"
+          className={`
+            h-20 w-20 rounded-full
+            backdrop-blur-xl bg-white/10
+            border border-white/20
+            shadow-[0_0_25px_rgba(255,255,255,0.1)]
+            transition-all flex items-center justify-center
+          
+            ${isActive && conversation.isSpeaking
+              ? "animate-pulse scale-110 shadow-[0_0_45px_rgba(255,100,200,0.6)]"
               : isActive
-                ? "shadow-lg shadow-pink-500/50"
-                : ""
-          } ${conversation.isSpeaking ? "cursor-not-allowed" : ""}`}
+                ? "shadow-[0_0_25px_rgba(255,100,200,0.4)]"
+                : "hover:bg-white/20"
+            }
+          
+            disabled:opacity-50 disabled:cursor-not-allowed
+          `}
         >
-          <Mic className="h-8 w-8" />
+          <Mic className="h-8 w-8 text-white drop-shadow" />
         </button>
-
         <button
           onClick={handleClose}
           disabled={isRequesting}
